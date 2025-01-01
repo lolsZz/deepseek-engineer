@@ -2,28 +2,88 @@
 
 ## Core Principles
 
-### 1. Tool Design Principles
+### 1. Language Selection
+
+#### TypeScript/JavaScript
+Best suited for:
+- Web API integrations
+- Real-time data processing
+- Event-driven servers
+- Browser automation
+
+```typescript
+// Example: Brave Search Server
+class BraveSearchServer extends Server {
+    private api: AxiosInstance;
+
+    constructor() {
+        super({
+            name: "brave-search",
+            version: "1.0.0"
+        });
+        
+        this.api = axios.create({
+            baseURL: "https://api.search.brave.com/",
+            headers: {
+                "X-Subscription-Token": process.env.BRAVE_API_KEY
+            }
+        });
+    }
+}
+```
+
+#### Python
+Best suited for:
+- Data processing
+- Machine learning integration
+- System operations
+- Database operations
+
+```python
+# Example: Git Server
+class GitServer:
+    def __init__(self):
+        self.server = Server(
+            name="git-server",
+            version="1.0.0"
+        )
+        
+    async def execute_git_command(self, command: List[str]) -> str:
+        try:
+            process = await asyncio.create_subprocess_exec(
+                "git", *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await process.communicate()
+            return stdout.decode()
+        except Exception as e:
+            raise McpError("INTERNAL_ERROR", f"Git command failed: {str(e)}")
+```
+
+### 2. Tool Design Principles
 
 #### Clear and Focused Tools
 ```typescript
 // Good
 {
-    name: "fetch_weather",
-    description: "Get weather for a specific location",
+    name: "search_web",
+    description: "Search the web using Brave Search API",
     inputSchema: {
         type: "object",
         properties: {
-            location: { type: "string" },
-            units: { type: "string", enum: ["metric", "imperial"] }
+            query: { type: "string" },
+            country: { type: "string", pattern: "^[A-Z]{2}$" },
+            language: { type: "string", pattern: "^[a-z]{2}$" }
         },
-        required: ["location"]
+        required: ["query"]
     }
 }
 
 // Avoid
 {
-    name: "weather_tool",
-    description: "Weather related operations",
+    name: "search",
+    description: "General search operations",
     inputSchema: {
         type: "object",
         properties: {
@@ -48,28 +108,32 @@ interface ToolResponse {
 function createResponse(result: any): ToolResponse {
     return {
         content: [{
-            type: "text",
-            text: JSON.stringify(result)
+            type: typeof result === 'object' ? 'json' : 'text',
+            text: typeof result === 'object' ? JSON.stringify(result) : String(result)
         }]
     };
 }
 ```
 
-### 2. Resource Management
+### 3. Resource Management
 
 #### Resource Lifecycle
 ```typescript
 class ResourceManager {
     private resources: Map<string, any>;
+    private cleanupHandlers: Map<string, () => Promise<void>>;
 
     async initialize(): Promise<void> {
         // Setup resources
     }
 
     async cleanup(): Promise<void> {
-        // Cleanup resources
-        for (const [_, resource] of this.resources) {
-            await resource.close();
+        for (const [id, handler] of this.cleanupHandlers) {
+            try {
+                await handler();
+            } catch (error) {
+                console.error(`Cleanup failed for ${id}:`, error);
+            }
         }
     }
 
@@ -111,7 +175,7 @@ class CacheManager {
 }
 ```
 
-### 3. Error Handling
+### 4. Error Handling
 
 #### Error Types
 ```typescript
@@ -120,7 +184,8 @@ enum ErrorCode {
     InternalError = "INTERNAL_ERROR",
     ExternalServiceError = "EXTERNAL_SERVICE_ERROR",
     ResourceNotFound = "RESOURCE_NOT_FOUND",
-    Unauthorized = "UNAUTHORIZED"
+    Unauthorized = "UNAUTHORIZED",
+    RateLimitExceeded = "RATE_LIMIT_EXCEEDED"
 }
 
 class McpError extends Error {
@@ -157,7 +222,7 @@ async function handleToolExecution(params: any): Promise<ToolResponse> {
 }
 ```
 
-### 4. Security Implementation
+### 5. Security Implementation
 
 #### Input Validation
 ```typescript
@@ -175,6 +240,12 @@ function validateInput(input: any, schema: JSONSchema): void {
 #### Access Control
 ```typescript
 class AccessManager {
+    private rateLimiter: RateLimiter;
+
+    constructor() {
+        this.rateLimiter = new RateLimiter();
+    }
+
     validateToken(token: string): boolean {
         // Validate token
         return true;
@@ -183,6 +254,10 @@ class AccessManager {
     checkPermission(resource: string, action: string): boolean {
         // Check permissions
         return true;
+    }
+
+    checkRateLimit(key: string): boolean {
+        return this.rateLimiter.checkLimit(key, 100, 60000); // 100 requests per minute
     }
 
     auditAccess(resource: string, action: string): void {
@@ -194,72 +269,93 @@ class AccessManager {
 
 ## Implementation Patterns
 
-### 1. Server Setup
+### 1. API Integration Pattern
 ```typescript
-class CustomMcpServer {
-    private server: Server;
-    private resources: ResourceManager;
+class ApiIntegrationServer extends CustomMcpServer {
+    private api: AxiosInstance;
     private cache: CacheManager;
-    private access: AccessManager;
+    private rateLimiter: RateLimiter;
 
     constructor() {
-        this.server = new Server({
-            name: "custom-server",
-            version: "1.0.0"
+        super();
+        this.setupApi();
+        this.cache = new CacheManager();
+        this.rateLimiter = new RateLimiter();
+    }
+
+    private setupApi() {
+        this.api = axios.create({
+            baseURL: process.env.API_BASE_URL,
+            headers: {
+                Authorization: `Bearer ${process.env.API_KEY}`
+            }
         });
 
-        this.resources = new ResourceManager();
-        this.cache = new CacheManager();
-        this.access = new AccessManager();
-
-        this.setupHandlers();
+        // Add response caching
+        this.api.interceptors.response.use(async (response) => {
+            const cacheKey = this.getCacheKey(response.config);
+            await this.cache.set(cacheKey, response.data);
+            return response;
+        });
     }
 
-    private setupHandlers(): void {
-        this.setupToolHandlers();
-        this.setupResourceHandlers();
-    }
-}
-```
+    protected async makeApiCall(endpoint: string, params: any): Promise<any> {
+        const cacheKey = this.getCacheKey({ url: endpoint, params });
+        const cachedData = await this.cache.get(cacheKey);
+        if (cachedData) return cachedData;
 
-### 2. Tool Implementation
-```typescript
-class Tool {
-    constructor(
-        private name: string,
-        private handler: (params: any) => Promise<any>
-    ) {}
+        if (!this.rateLimiter.checkLimit(endpoint, 60, 60000)) {
+            throw new McpError(ErrorCode.RateLimitExceeded, "Rate limit exceeded");
+        }
 
-    async execute(params: any): Promise<ToolResponse> {
         try {
-            const result = await this.handler(params);
-            return createResponse(result);
+            const response = await this.api.get(endpoint, { params });
+            return response.data;
         } catch (error) {
             throw new McpError(
-                ErrorCode.InternalError,
-                `Tool execution failed: ${error.message}`
+                ErrorCode.ExternalServiceError,
+                `API call failed: ${error.message}`
             );
         }
     }
 }
 ```
 
-### 3. Resource Implementation
+### 2. Database Integration Pattern
 ```typescript
-class Resource {
-    constructor(
-        private uri: string,
-        private fetcher: () => Promise<any>
-    ) {}
+class DatabaseServer extends CustomMcpServer {
+    private pool: Pool;
+    private queryCache: CacheManager;
 
-    async fetch(): Promise<any> {
+    constructor() {
+        super();
+        this.setupDatabase();
+        this.queryCache = new CacheManager();
+    }
+
+    private async setupDatabase() {
+        this.pool = new Pool({
+            host: process.env.DB_HOST,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            database: process.env.DB_NAME,
+            max: 20,
+            idleTimeoutMillis: 30000
+        });
+    }
+
+    protected async query(sql: string, params: any[]): Promise<any> {
+        const cacheKey = this.getQueryCacheKey(sql, params);
+        const cachedResult = await this.queryCache.get(cacheKey);
+        if (cachedResult) return cachedResult;
+
+        const client = await this.pool.connect();
         try {
-            return await this.fetcher();
-        } catch (error) {
-            throw new McpError(
-                ErrorCode.ResourceNotFound,
-                `Resource fetch failed: ${error.message}`
-            );
+            const result = await client.query(sql, params);
+            await this.queryCache.set(cacheKey, result.rows);
+            return result.rows;
+        } finally {
+            client.release();
         }
     }
 }
@@ -267,56 +363,76 @@ class Resource {
 
 ## Best Practices Checklist
 
-### 1. Tool Design
+### 1. Server Implementation
+- [ ] Choose appropriate language (TypeScript/Python) based on use case
+- [ ] Implement proper initialization and cleanup
+- [ ] Use dependency injection for better testability
+- [ ] Follow single responsibility principle
+- [ ] Implement proper logging and monitoring
+
+### 2. Tool Design
 - [ ] Use clear, descriptive names
 - [ ] Implement comprehensive input validation
 - [ ] Return structured responses
 - [ ] Handle errors gracefully
 - [ ] Document usage and parameters
 
-### 2. Resource Management
+### 3. Resource Management
 - [ ] Implement proper resource lifecycle
 - [ ] Use caching where appropriate
 - [ ] Handle concurrent access
 - [ ] Cleanup resources properly
 - [ ] Validate resource access
 
-### 3. Error Handling
+### 4. Error Handling
 - [ ] Use appropriate error codes
 - [ ] Provide detailed error messages
 - [ ] Implement proper cleanup on errors
 - [ ] Log errors for debugging
 - [ ] Handle timeouts gracefully
 
-### 4. Security
+### 5. Security
 - [ ] Validate all inputs
 - [ ] Implement access control
 - [ ] Handle sensitive data properly
 - [ ] Use environment variables for secrets
 - [ ] Implement rate limiting
 
-### 5. Performance
+### 6. Performance
 - [ ] Use caching effectively
 - [ ] Implement connection pooling
 - [ ] Handle concurrent requests
 - [ ] Monitor resource usage
 - [ ] Optimize response times
 
-### 6. Monitoring
-- [ ] Implement logging
-- [ ] Track metrics
-- [ ] Set up health checks
-- [ ] Monitor error rates
-- [ ] Track resource usage
+### 7. Testing
+- [ ] Write comprehensive unit tests
+- [ ] Implement integration tests
+- [ ] Test error scenarios
+- [ ] Test performance under load
+- [ ] Test security measures
 
 ## Testing Guidelines
 
 ### 1. Unit Testing
 ```typescript
 describe('Tool', () => {
-    it('should validate input', () => {
-        const tool = new Tool('test', async () => {});
-        expect(() => tool.execute({})).to.throw(McpError);
+    let tool: Tool;
+    let mockApi: jest.Mock;
+
+    beforeEach(() => {
+        mockApi = jest.fn();
+        tool = new Tool('test', mockApi);
+    });
+
+    it('should validate input', async () => {
+        await expect(tool.execute({})).rejects.toThrow(McpError);
+    });
+
+    it('should handle successful execution', async () => {
+        mockApi.mockResolvedValue({ data: 'test' });
+        const result = await tool.execute({ param: 'test' });
+        expect(result.content[0].text).toBe('{"data":"test"}');
     });
 });
 ```
@@ -324,14 +440,27 @@ describe('Tool', () => {
 ### 2. Integration Testing
 ```typescript
 describe('Server', () => {
-    it('should handle tool requests', async () => {
-        const server = new CustomMcpServer();
+    let server: CustomMcpServer;
+    let mockDb: jest.Mock;
+
+    beforeEach(async () => {
+        mockDb = jest.fn();
+        server = new CustomMcpServer(mockDb);
+        await server.initialize();
+    });
+
+    afterEach(async () => {
+        await server.cleanup();
+    });
+
+    it('should handle database queries', async () => {
+        mockDb.mockResolvedValue([{ id: 1 }]);
         const response = await server.handleRequest({
             type: 'tool',
-            name: 'test',
-            params: {}
+            name: 'query',
+            params: { sql: 'SELECT * FROM test' }
         });
-        expect(response).to.exist;
+        expect(response.content[0].text).toContain('"id":1');
     });
 });
 ```

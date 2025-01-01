@@ -7,6 +7,10 @@ The Model Context Protocol (MCP) enables DeepSeek Engineer to communicate with l
 ## Core Concepts
 
 ### 1. MCP Server Structure
+
+MCP servers can be implemented in both TypeScript/JavaScript and Python, offering flexibility in language choice based on the use case.
+
+#### TypeScript Implementation
 ```typescript
 import { Server } from "@modelcontextprotocol/sdk/server";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio";
@@ -35,7 +39,31 @@ class CustomMcpServer {
 }
 ```
 
+#### Python Implementation
+```python
+from mcp_server_base import Server, StdioServerTransport
+from typing import Dict, Any
+
+class CustomMcpServer:
+    def __init__(self):
+        self.server = Server(
+            name="custom-server",
+            version="1.0.0"
+        )
+        self.setup_handlers()
+
+    def setup_handlers(self):
+        # Tool and resource handlers setup
+        pass
+
+    async def run(self):
+        transport = StdioServerTransport()
+        await self.server.connect(transport)
+        print("MCP server running on stdio", file=sys.stderr)
+```
+
 ### 2. Tool Implementation
+
 ```typescript
 interface Tool {
     name: string;
@@ -72,6 +100,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 ```
 
 ### 3. Resource Implementation
+
 ```typescript
 interface Resource {
     uri: string;
@@ -96,6 +125,7 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => ({
 ## Server Types
 
 ### 1. API Integration Servers
+Examples: Brave Search, Google Maps
 ```typescript
 class ApiServer extends CustomMcpServer {
     private api: ApiClient;
@@ -122,6 +152,7 @@ class ApiServer extends CustomMcpServer {
 ```
 
 ### 2. System Integration Servers
+Examples: Filesystem, Git, Time
 ```typescript
 class SystemServer extends CustomMcpServer {
     protected async executeCommand(command: string) {
@@ -137,6 +168,54 @@ class SystemServer extends CustomMcpServer {
             throw new McpError(
                 ErrorCode.InternalError,
                 `Command execution failed: ${error.message}`
+            );
+        }
+    }
+}
+```
+
+### 3. Database Servers
+Examples: SQLite, PostgreSQL
+```typescript
+class DatabaseServer extends CustomMcpServer {
+    private connection: any;
+
+    constructor() {
+        super();
+        this.connection = this.initializeDatabase();
+    }
+
+    protected async query(sql: string, params: any[]) {
+        try {
+            return await this.connection.query(sql, params);
+        } catch (error) {
+            throw new McpError(
+                ErrorCode.InternalError,
+                `Database query failed: ${error.message}`
+            );
+        }
+    }
+}
+```
+
+### 4. AI/ML Integration Servers
+Examples: AWS KB Retrieval, Sequential Thinking
+```typescript
+class AiServer extends CustomMcpServer {
+    private model: any;
+
+    constructor() {
+        super();
+        this.model = this.initializeModel();
+    }
+
+    protected async inference(input: string) {
+        try {
+            return await this.model.predict(input);
+        } catch (error) {
+            throw new McpError(
+                ErrorCode.InternalError,
+                `Model inference failed: ${error.message}`
             );
         }
     }
@@ -243,7 +322,7 @@ class McpErrorHandler {
 ### 1. Server Design
 - Keep servers focused and single-purpose
 - Implement proper error handling
-- Use TypeScript for type safety
+- Use TypeScript/Python type hints for type safety
 - Follow MCP specifications
 
 ### 2. Tool Design

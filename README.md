@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository contains a powerful coding assistant application that integrates with the DeepSeek API to process user conversations and generate structured JSON responses. Through an intuitive command-line interface, it can read local file contents, create new files, and apply diff edits to existing files in real time.
+This repository contains a powerful coding assistant application that integrates with the DeepSeek API to process user conversations and generate structured JSON responses. Through an intuitive command-line interface, it can read local file contents, create new files, and apply diff edits to existing files in real time. The system is extended through the Model Context Protocol (MCP), providing access to a wide range of tools and services.
 
 ## Key Features
 
@@ -39,6 +39,19 @@ This repository contains a powerful coding assistant application that integrates
    - When the assistant suggests new or edited files, you can confirm changes directly in your local environment.  
    - Type "exit" or "quit" to end the session.  
 
+8. MCP Server Integration
+   - Extends functionality through the Model Context Protocol (MCP)
+   - Provides access to various server types:
+     • System Integration (Filesystem, Git, Time)
+     • Database (SQLite, PostgreSQL)
+     • Search & Knowledge (Brave Search, AWS KB Retrieval)
+     • AI/ML Integration (Sequential Thinking, EverArt)
+     • External API Integration (Google Maps, Slack, GitHub/GitLab)
+     • Monitoring (Sentry)
+   - Implements both TypeScript and Python servers
+   - Features comprehensive security and rate limiting
+   - Supports caching and resource management
+
 ## Getting Started
 
 1. Prepare a .env file with your DeepSeek API key:
@@ -59,7 +72,47 @@ This repository contains a powerful coding assistant application that integrates
    uv run main.py
    ```
 
-3. Enjoy multi-line streaming responses, file read-ins with "/add path/to/file", and precise file edits when approved.
+3. Configure MCP Servers:
+   - Set up desired MCP servers from the mcp-servers directory
+   - Configure server settings in ~/.config/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/cline_mcp_settings.json
+   - Add any required API keys or credentials to the server configurations
+
+4. Enjoy multi-line streaming responses, file read-ins with "/add path/to/file", precise file edits when approved, and extended functionality through MCP servers.
+
+## MCP Server Documentation
+
+For detailed information about MCP servers, refer to the documentation in dev/docs:
+- [MCP Specification](dev/docs/mcp-specification.md) - Protocol details and architecture
+- [MCP Implementation](dev/docs/mcp-implementation.md) - Implementation guide and examples
+- [MCP Best Practices](dev/docs/mcp-best-practices.md) - Guidelines and patterns
+
+## Available MCP Servers
+
+1. System Integration
+   - filesystem: File system operations
+   - git: Version control operations
+   - time: Time management and scheduling
+
+2. Database
+   - sqlite: SQLite database operations
+   - postgres: PostgreSQL database operations
+   - memory: In-memory storage
+
+3. Search & Knowledge
+   - brave-search: Web search capabilities
+   - aws-kb-retrieval: AWS knowledge base integration
+   - everything: Local file search
+
+4. AI/ML Integration
+   - sequentialthinking: Advanced reasoning capabilities
+   - everart: Art generation
+
+5. External APIs
+   - google-maps: Location and mapping services
+   - slack: Slack messaging integration
+   - github/gitlab: Repository management
+
+6. Monitoring
+   - sentry: Error tracking and monitoring
 
 > **Note**: This is an experimental project developed by Skirano to test the new DeepSeek v3 API capabilities. It was developed as a rapid prototype and should be used accordingly.
-

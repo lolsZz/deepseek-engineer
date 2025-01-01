@@ -23,23 +23,58 @@ graph LR
     subgraph "Local machine"
         S1[Server 1<br>Files & Git]
         S2[Server 2<br>Database]
+        S3[Server 3<br>Search & AI]
         R1[("Local<br>Resource A")]
         R2[("Local<br>Resource B")]
+        R3[("Knowledge<br>Base")]
 
         C1 --> S1
         C2 --> S2
+        C3 --> S3
         S1 <--> R1
         S2 <--> R2
+        S3 <--> R3
     end
 
     subgraph "Internet"
-        S3[Server 3<br>External APIs]
-        R3[("Remote<br>Resource C")]
+        S4[Server 4<br>External APIs]
+        R4[("Remote<br>Resource D")]
 
-        C3 --> S3
-        S3 <--> R3
+        C3 --> S4
+        S4 <--> R4
     end
 ```
+
+### Server Categories
+
+1. **System Integration Servers**
+   - File System Operations
+   - Git Version Control
+   - Time Management
+   - Process Management
+
+2. **Database Servers**
+   - SQLite
+   - PostgreSQL
+   - Memory Storage
+
+3. **Search & Knowledge Servers**
+   - Brave Search
+   - AWS KB Retrieval
+   - Everything Search
+
+4. **AI/ML Integration Servers**
+   - Sequential Thinking
+   - EverArt Generation
+
+5. **External API Servers**
+   - Google Maps
+   - Slack Integration
+   - GitHub/GitLab
+
+6. **Monitoring Servers**
+   - Sentry Error Tracking
+   - Performance Monitoring
 
 ### Component Roles
 
@@ -215,7 +250,9 @@ enum ErrorCode {
     InternalError = -32603,
     ResourceNotFound = -32001,
     ResourceAccessDenied = -32002,
-    ToolExecutionError = -32003
+    ToolExecutionError = -32003,
+    RateLimitExceeded = -32004,
+    ExternalServiceError = -32005
 }
 ```
 
@@ -243,7 +280,19 @@ interface AccessControl {
 }
 ```
 
-### 2. Security Guidelines
+### 2. Rate Limiting
+```typescript
+interface RateLimiter {
+    checkLimit(key: string, limit: number, window: number): boolean;
+    resetLimit(key: string): void;
+    getLimitStatus(key: string): {
+        remaining: number;
+        reset: number;
+    };
+}
+```
+
+### 3. Security Guidelines
 - Implement proper authentication if needed
 - Validate all inputs
 - Control resource access
@@ -258,7 +307,7 @@ interface AccessControl {
 - Implement proper error handling
 - Validate all inputs
 - Handle resource cleanup
-- Use TypeScript for type safety
+- Use TypeScript/Python for type safety
 
 ### 2. Performance
 - Optimize transport layer
