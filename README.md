@@ -2,62 +2,83 @@
 
 ## Overview
 
-This repository contains a powerful coding assistant application that integrates with the DeepSeek API to process user conversations and generate structured JSON responses. Through an intuitive command-line interface, it can read local file contents, create new files, and apply diff edits to existing files in real time. The system is extended through the Model Context Protocol (MCP), providing access to a wide range of tools and services.
+This repository contains a powerful coding assistant application that integrates with multiple LLM providers through LiteLLM, with DeepSeek as the primary implementation. Through an intuitive command-line interface, it can read local file contents, create new files, and apply diff edits to existing files in real time. The system is extended through the Model Context Protocol (MCP), providing access to a wide range of tools and services.
 
 ## Key Features
 
-1. DeepSeek Client Configuration
-   - Automatically configures an API client to use the DeepSeek service with a valid DEEPSEEK_API_KEY. 
-   - Connects to the DeepSeek endpoint specified in the environment variable to stream GPT-like completions. 
+1. Multi-Provider LLM Support
+   - Primary integration with DeepSeek API
+   - Support for Cerebras models
+   - AWS Bedrock integration
+   - Unified interface through LiteLLM
+   - Configurable fallback strategies
 
 2. Data Models
-   - Leverages Pydantic for type-safe handling of file operations, including:
-     • FileToCreate – describes files to be created or updated.  
-     • FileToEdit – describes specific snippet replacements in an existing file.  
-     • AssistantResponse – structures chat responses and potential file operations.  
+   - Leverages Pydantic for type-safe handling of file operations:
+     • FileToCreate – describes files to be created or updated
+     • FileToEdit – describes specific snippet replacements in an existing file
+     • AssistantResponse – structures chat responses and potential file operations
 
 3. System Prompt
-   - A comprehensive system prompt (system_PROMPT) guides conversation, ensuring all replies strictly adhere to JSON output with optional file creations or edits.  
+   - A comprehensive system prompt guides conversation
+   - Ensures structured JSON output
+   - Supports file operations and tool usage
 
-4. Helper Functions
-   - read_local_file: Reads a target filesystem path and returns its content as a string.  
-   - create_file: Creates or overwrites a file with provided content.  
-   - show_diff_table: Presents proposed file changes in a rich, multi-line table.  
-   - apply_diff_edit: Applies snippet-level modifications to existing files.  
+4. File Operations
+   - read_local_file: Reads target filesystem paths
+   - create_file: Creates or overwrites files
+   - show_diff_table: Visual diff previews
+   - apply_diff_edit: Precise code modifications
 
 5. "/add" Command
-   - Users can type "/add path/to/file" to quickly read a file's content and insert it into the conversation as a system message.  
-   - This allows the assistant to reference the file contents for further discussion, code generation, or diff proposals.  
+   - Quick file content insertion with "/add path/to/file"
+   - Adds context for code generation and modifications
+   - Supports conversation history management
 
 6. Conversation Flow
-   - Maintains a conversation_history list to track messages between user and assistant.  
-   - Streams the assistant's replies via the DeepSeek API, parsing them as JSON to preserve both the textual response and the instructions for file modifications.  
+   - Maintains conversation history
+   - Streams responses from LLM providers
+   - Parses structured JSON outputs
+   - Handles file modifications
 
 7. Interactive Session
-   - Run the script (for example: "python3 main.py") to start an interactive loop at your terminal.  
-   - Enter your requests or code questions. Enter "/add path/to/file" to add file contents to the conversation.  
-   - When the assistant suggests new or edited files, you can confirm changes directly in your local environment.  
-   - Type "exit" or "quit" to end the session.  
+   - Terminal-based interface
+   - File content integration
+   - Change confirmation system
+   - Streaming responses
 
 8. MCP Server Integration
-   - Extends functionality through the Model Context Protocol (MCP)
-   - Provides access to various server types:
+   - Model Context Protocol support
+   - Various server types:
      • System Integration (Filesystem, Git, Time)
      • Database (SQLite, PostgreSQL)
      • Search & Knowledge (Brave Search, AWS KB Retrieval)
      • AI/ML Integration (Sequential Thinking, EverArt)
      • External API Integration (Google Maps, Slack, GitHub/GitLab)
      • Monitoring (Sentry)
-   - Implements both TypeScript and Python servers
-   - Features comprehensive security and rate limiting
-   - Supports caching and resource management
+   - TypeScript and Python implementations
+   - Security and rate limiting
+   - Caching and resource management
+
+9. Logging and Monitoring
+   - Comprehensive logging system
+   - Performance monitoring
+   - Error tracking
+   - Usage analytics
 
 ## Getting Started
 
-1. Prepare a .env file with your DeepSeek API key:
-   DEEPSEEK_API_KEY=your_api_key_here
+1. Prepare environment variables:
+   ```bash
+   # .env file
+   DEEPSEEK_API_KEY=your_deepseek_key
+   CEREBRAS_API_KEY=your_cerebras_key  # Optional
+   AWS_ACCESS_KEY_ID=your_aws_key      # Optional
+   AWS_SECRET_ACCESS_KEY=your_aws_secret  # Optional
+   AWS_REGION_NAME=your_aws_region     # Optional
+   ```
 
-2. Install dependencies and run (choose one method):
+2. Install dependencies (choose one method):
 
    ### Using pip
    ```bash
@@ -68,23 +89,41 @@ This repository contains a powerful coding assistant application that integrates
    ### Using uv (faster alternative)
    ```bash
    uv venv
-
    uv run main.py
    ```
 
 3. Configure MCP Servers:
-   - Set up desired MCP servers from the mcp-servers directory
-   - Configure server settings in ~/.config/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/cline_mcp_settings.json
-   - Add any required API keys or credentials to the server configurations
+   - Set up desired MCP servers from mcp-servers directory
+   - Configure in ~/.config/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/cline_mcp_settings.json
+   - Add required API keys and credentials
 
-4. Enjoy multi-line streaming responses, file read-ins with "/add path/to/file", precise file edits when approved, and extended functionality through MCP servers.
+4. Start using the system:
+   - Run interactive sessions
+   - Use "/add path/to/file" for file operations
+   - Leverage MCP servers for extended functionality
 
-## MCP Server Documentation
+## Documentation
 
-For detailed information about MCP servers, refer to the documentation in dev/docs:
-- [MCP Specification](dev/docs/mcp-specification.md) - Protocol details and architecture
-- [MCP Implementation](dev/docs/mcp-implementation.md) - Implementation guide and examples
+### Core Documentation
+- [Architecture](dev/docs/architecture.md) - System design and components
+- [API Integration](dev/docs/api-integration.md) - API interaction details
+- [File Operations](dev/docs/file-operations.md) - File handling guide
+- [Components](dev/docs/components.md) - Component breakdown
+
+### LLM Integration
+- [DeepSeek Integration](dev/docs/deepseek-integration.md) - Primary LLM implementation
+- [LiteLLM Integration](dev/docs/litellm-integration.md) - Multi-provider support
+- [LLM Configuration](dev/docs/llm-configuration.md) - LLM setup guide
+- [Advanced LLM Features](dev/docs/advanced-llm-features.md) - Advanced capabilities
+
+### MCP Documentation
+- [MCP Specification](dev/docs/mcp-specification.md) - Protocol details
+- [MCP Implementation](dev/docs/mcp-implementation.md) - Implementation guide
 - [MCP Best Practices](dev/docs/mcp-best-practices.md) - Guidelines and patterns
+
+### System Documentation
+- [Development Guide](dev/docs/development-guide.md) - Development workflow
+- [Logging and Monitoring](dev/docs/logging-and-monitoring.md) - Observability guide
 
 ## Available MCP Servers
 
@@ -115,4 +154,14 @@ For detailed information about MCP servers, refer to the documentation in dev/do
 6. Monitoring
    - sentry: Error tracking and monitoring
 
-> **Note**: This is an experimental project developed by Skirano to test the new DeepSeek v3 API capabilities. It was developed as a rapid prototype and should be used accordingly.
+## Contributing
+
+See the [Development Guide](dev/docs/development-guide.md) for information on contributing to the project.
+
+## License
+
+This project is licensed under the terms specified in the project root.
+
+---
+
+> **Note**: This is an experimental project developed to test advanced LLM capabilities through a unified interface. It was developed as a rapid prototype and should be used accordingly.
