@@ -3,9 +3,10 @@
 ## Getting Started
 
 ### Prerequisites
-- Python 3.11 or higher
+- Python 3.12 or higher (for enhanced typing support)
 - DeepSeek API key
 - pip or uv package manager
+- Git for version control
 
 ### Initial Setup
 
@@ -43,8 +44,11 @@ deepseek-engineer/
 ├── requirements.txt     # Pinned dependencies
 ├── .gitignore          # Git ignore rules
 ├── README.md           # Project documentation
-└── dev/                # Development documentation
-    └── docs/           # Detailed documentation files
+├── tests/              # Test suite directory
+│   ├── unit/          # Unit tests
+│   └── integration/   # Integration tests
+└── dev/               # Development documentation
+    └── docs/          # Detailed documentation files
 ```
 
 ## Development Workflow
@@ -56,22 +60,27 @@ The main application logic is organized into several key sections:
 1. **Client Configuration**
    - API client setup
    - Environment variable management
+   - MCP server configuration
 
 2. **Data Models**
    - Pydantic models for type safety
    - Request/response structures
+   - MCP protocol types
 
 3. **File Operations**
    - File reading/writing utilities
    - Diff editing functionality
+   - Path normalization
 
 4. **Conversation Management**
    - Message history tracking
    - Context management
+   - Token optimization
 
 5. **UI/UX Components**
    - Rich console output
    - User interaction handlers
+   - Progress indicators
 
 ### 2. Adding New Features
 
@@ -81,20 +90,32 @@ When adding new features:
    - Define the feature scope
    - Design the API/interface
    - Consider error cases
+   - Plan for testing
 
 2. **Implement Models**
    ```python
-   from pydantic import BaseModel
+   from pydantic import BaseModel, Field
    
    class NewFeatureModel(BaseModel):
-       field1: str
-       field2: Optional[int] = None
+       field1: str = Field(..., description="Field description")
+       field2: Optional[int] = Field(None, description="Optional field")
    ```
 
 3. **Add Helper Functions**
    ```python
-   def new_feature_helper():
-       """Document the purpose and usage."""
+   def new_feature_helper(param: str) -> Result:
+       """
+       Implement new functionality with proper typing.
+
+       Args:
+           param: Description of parameter
+
+       Returns:
+           Result: Description of return value
+
+       Raises:
+           FeatureError: When something goes wrong
+       """
        # Implementation
    ```
 
@@ -108,52 +129,87 @@ When adding new features:
 
 ### 3. Testing
 
-Currently, the project needs a formal testing framework. When implementing tests:
+The project uses pytest for testing. Run tests with:
+```bash
+pytest tests/
+```
 
 1. **Unit Tests**
    ```python
+   import pytest
+   from unittest.mock import Mock
+
    def test_file_operations():
-       # Test file creation
-       # Test file reading
-       # Test diff editing
+       # Arrange
+       test_file = "test.txt"
+       test_content = "test content"
+       
+       # Act
+       result = create_file(test_file, test_content)
+       
+       # Assert
+       assert result.success
+       assert file_exists(test_file)
    ```
 
 2. **Integration Tests**
    ```python
+   @pytest.mark.integration
    def test_api_integration():
        # Test API connection
-       # Test response handling
-       # Test error cases
+       client = create_client()
+       response = client.chat.completions.create(...)
+       assert response.status == 200
    ```
 
-3. **Manual Testing**
-   - Test file operations
-   - Verify API responses
-   - Check error handling
+3. **Mocking External Services**
+   ```python
+   @pytest.fixture
+   def mock_api():
+       with patch('deepseek.api.client') as mock:
+           yield mock
+   ```
 
 ### 4. Error Handling
 
 Follow these principles for error handling:
 
-1. **Use Try-Except Blocks**
+1. **Custom Exceptions**
+   ```python
+   class FeatureError(Exception):
+       """Base exception for feature-specific errors."""
+       pass
+
+   class ValidationError(FeatureError):
+       """Raised when validation fails."""
+       pass
+   ```
+
+2. **Error Handling Pattern**
    ```python
    try:
-       # Operation
-   except SpecificError as e:
-       # Handle specific error
+       result = perform_operation()
+   except ValidationError as e:
+       console.print(f"[red]✗[/red] Validation failed: {str(e)}")
+       logger.error(f"Validation error: {str(e)}")
+   except FeatureError as e:
+       console.print(f"[red]✗[/red] Operation failed: {str(e)}")
+       logger.error(f"Feature error: {str(e)}")
    except Exception as e:
-       # Handle unexpected errors
+       console.print(f"[red]✗[/red] Unexpected error: {str(e)}")
+       logger.exception("Unexpected error occurred")
    ```
 
-2. **Provide Clear Feedback**
+3. **Logging**
    ```python
-   console.print(f"[red]✗[/red] Error: {str(e)}", style="red")
-   ```
+   import logging
 
-3. **Log Errors**
-   ```python
-   # Future enhancement: Add proper logging
-   logger.error(f"Operation failed: {str(e)}")
+   logger = logging.getLogger(__name__)
+   logger.setLevel(logging.INFO)
+
+   handler = logging.FileHandler('app.log')
+   handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+   logger.addHandler(handler)
    ```
 
 ## Best Practices
@@ -164,34 +220,48 @@ Follow these guidelines:
 
 1. **Type Hints**
    ```python
-   def function_name(param: str) -> bool:
-       return isinstance(param, str)
+   from typing import Optional, List, Dict
+
+   def process_data(items: List[str], config: Optional[Dict[str, any]] = None) -> bool:
+       return all(isinstance(item, str) for item in items)
    ```
 
 2. **Documentation**
    ```python
-   def complex_operation():
+   def complex_operation(param: str) -> Result:
        """
-       Detailed description of the operation.
+       Perform a complex operation with detailed documentation.
+       
+       Args:
+           param: Detailed parameter description
        
        Returns:
-           Operation result
+           Result object containing operation output
+       
        Raises:
-           SpecificError: When something goes wrong
+           ValueError: When param is invalid
+           OperationError: When operation fails
+       
+       Example:
+           >>> result = complex_operation("test")
+           >>> print(result.status)
+           'success'
        """
    ```
 
-3. **Consistent Formatting**
-   - Use 4 spaces for indentation
-   - Follow PEP 8 guidelines
-   - Use meaningful variable names
+3. **Code Formatting**
+   - Use black for consistent formatting
+   - Use isort for import sorting
+   - Use flake8 for linting
+   - Use mypy for type checking
 
 ### 2. Git Workflow
 
-1. **Branch Management**
+1. **Branch Naming**
    ```bash
-   git checkout -b feature/new-feature
-   git checkout -b bugfix/issue-description
+   feature/add-new-capability
+   bugfix/fix-error-handling
+   docs/update-api-docs
    ```
 
 2. **Commit Messages**
@@ -199,37 +269,40 @@ Follow these guidelines:
    feat: Add new feature X
    fix: Resolve issue with Y
    docs: Update documentation for Z
+   test: Add tests for feature X
    ```
 
-3. **Pull Requests**
-   - Provide clear descriptions
-   - Reference issues
-   - Include test cases
+3. **Pull Request Process**
+   - Create detailed PR description
+   - Include test coverage
+   - Update documentation
+   - Add changelog entry
 
 ### 3. Documentation
 
 1. **Code Comments**
    ```python
-   # Explain complex algorithms
-   # Document assumptions
-   # Note potential issues
+   # Algorithm complexity: O(n log n)
+   # Note: This assumes sorted input
+   def binary_search(items: List[int], target: int) -> int:
+       """
+       Perform binary search with detailed implementation notes.
+       """
    ```
 
-2. **Function Documentation**
+2. **API Documentation**
    ```python
-   def function_name():
+   class APIClient:
        """
-       Short description.
+       Client for interacting with external APIs.
 
-       Longer description with examples:
-       >>> function_name()
-       Expected output
+       Attributes:
+           base_url: The base URL for API requests
+           timeout: Request timeout in seconds
 
-       Args:
-           None
-
-       Returns:
-           Description of return value
+       Example:
+           >>> client = APIClient("https://api.example.com")
+           >>> response = client.get_data()
        """
    ```
 
@@ -237,6 +310,7 @@ Follow these guidelines:
    - Keep installation steps current
    - Document new features
    - Update troubleshooting guides
+   - Include example usage
 
 ## Troubleshooting
 
@@ -246,28 +320,39 @@ Follow these guidelines:
    - Check API key validity
    - Verify network connection
    - Confirm base URL
+   - Check rate limits
 
 2. **File Operations**
    - Check file permissions
    - Verify path existence
    - Validate file content
+   - Check disk space
 
 3. **Dependencies**
    - Verify Python version
    - Check package versions
    - Update dependencies
+   - Clear cache if needed
 
 ### Debug Tools
 
 1. **Rich Console**
    ```python
+   from rich.console import Console
+   console = Console()
+
    console.print("[red]Debug:[/red]", obj, style="bold")
+   console.print_json(data)
    ```
 
 2. **Environment Checks**
    ```python
+   import sys
+   import os
+   
    console.print(f"Python: {sys.version}")
    console.print(f"Working Dir: {os.getcwd()}")
+   console.print(f"Environment: {os.environ.get('ENV', 'development')}")
    ```
 
 ## Future Development
@@ -275,19 +360,22 @@ Follow these guidelines:
 ### Planned Enhancements
 
 1. **Code Quality**
-   - Add test suite
-   - Implement logging
-   - Add type checking
+   - Expand test coverage
+   - Add performance benchmarks
+   - Implement comprehensive logging
+   - Add static analysis tools
 
 2. **Features**
-   - Multiple model support
-   - Enhanced file operations
+   - Enhanced MCP server support
+   - Improved file operations
    - Project templates
+   - Plugin system
 
 3. **Documentation**
-   - API documentation
-   - User guides
+   - Interactive API documentation
+   - Video tutorials
    - Contributing guidelines
+   - Architecture diagrams
 
 ### Contributing
 
@@ -297,14 +385,17 @@ Follow these guidelines:
    cd deepseek-engineer
    uv venv
    uv pip install -r requirements.txt
+   pre-commit install
    ```
 
-2. **Make Changes**
+2. **Development Process**
    - Follow style guide
-   - Add tests
-   - Update docs
+   - Write tests
+   - Update documentation
+   - Run CI checks locally
 
-3. **Submit PR**
-   - Clear description
-   - Test coverage
-   - Documentation updates
+3. **Submit Changes**
+   - Create feature branch
+   - Make atomic commits
+   - Write clear PR description
+   - Address review feedback

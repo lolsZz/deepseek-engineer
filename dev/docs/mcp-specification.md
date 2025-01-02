@@ -2,121 +2,86 @@
 
 ## Overview
 
-The Model Context Protocol (MCP) follows a client-host-server architecture where each host can run multiple client instances. Built on JSON-RPC, MCP provides a stateful session protocol focused on context exchange and sampling coordination between clients and servers.
+The Model Context Protocol (MCP) is a standardized communication protocol that enables AI/LLM systems to interact with external tools and resources. Built on JSON-RPC, it provides a secure, stateful session protocol for context exchange and sampling coordination between clients and servers.
 
-## Architecture
+## Core Concepts
 
-### Core Components
+### Architecture Components
 
-```mermaid
-graph LR
-    subgraph "Application Host Process"
-        H[Host]
-        C1[Client 1]
-        C2[Client 2]
-        C3[Client 3]
-        H --> C1
-        H --> C2
-        H --> C3
-    end
+1. **Host**
+   - Creates and manages client instances
+   - Controls permissions and lifecycle
+   - Manages security policies
+   - Coordinates AI/LLM integration
 
-    subgraph "Local machine"
-        S1[Server 1<br>Files & Git]
-        S2[Server 2<br>Database]
-        S3[Server 3<br>Search & AI]
-        R1[("Local<br>Resource A")]
-        R2[("Local<br>Resource B")]
-        R3[("Knowledge<br>Base")]
+2. **Clients**
+   - Maintain stateful server sessions
+   - Handle protocol negotiation
+   - Route messages bidirectionally
+   - Manage resource subscriptions
 
-        C1 --> S1
-        C2 --> S2
-        C3 --> S3
-        S1 <--> R1
-        S2 <--> R2
-        S3 <--> R3
-    end
-
-    subgraph "Internet"
-        S4[Server 4<br>External APIs]
-        R4[("Remote<br>Resource D")]
-
-        C3 --> S4
-        S4 <--> R4
-    end
-```
+3. **Servers**
+   - Expose tools and resources
+   - Implement focused capabilities
+   - Handle resource management
+   - Enforce security boundaries
 
 ### Server Categories
 
-1. **System Integration Servers**
-   - File System Operations
-   - Git Version Control
-   - Time Management
-   - Process Management
+1. **System Integration**
+   - File system operations
+   - Git version control
+   - Time management
+   - Process management
 
-2. **Database Servers**
-   - SQLite
-   - PostgreSQL
-   - Memory Storage
+2. **Database Integration**
+   - SQLite operations
+   - PostgreSQL integration
+   - In-memory storage
+   - Query execution
 
-3. **Search & Knowledge Servers**
-   - Brave Search
-   - AWS KB Retrieval
-   - Everything Search
+3. **Search & Knowledge**
+   - Web search capabilities
+   - Knowledge base integration
+   - Local file search
+   - Content indexing
 
-4. **AI/ML Integration Servers**
-   - Sequential Thinking
-   - EverArt Generation
+4. **AI/ML Integration**
+   - Sequential reasoning
+   - Art generation
+   - Model coordination
+   - Resource optimization
 
-5. **External API Servers**
-   - Google Maps
-   - Slack Integration
-   - GitHub/GitLab
+5. **External APIs**
+   - Location services
+   - Messaging platforms
+   - Repository management
+   - Third-party integration
 
-6. **Monitoring Servers**
-   - Sentry Error Tracking
-   - Performance Monitoring
-
-### Component Roles
-
-#### Host
-- Creates and manages multiple client instances
-- Controls client connection permissions and lifecycle
-- Enforces security policies and consent requirements
-- Handles user authorization decisions
-- Coordinates AI/LLM integration and sampling
-- Manages context aggregation across clients
-
-#### Clients
-- Establishes one stateful session per server
-- Handles protocol negotiation and capability exchange
-- Routes protocol messages bidirectionally
-- Manages subscriptions and notifications
-- Maintains security boundaries between servers
-
-#### Servers
-- Expose resources, tools and prompts via MCP primitives
-- Operate independently with focused responsibilities
-- Request sampling through client interfaces
-- Must respect security constraints
-- Can be local processes or remote services
+6. **Monitoring**
+   - Error tracking
+   - Performance monitoring
+   - Usage analytics
+   - Health checks
 
 ## Protocol Specification
 
 ### 1. Message Types
 
 ```typescript
-interface MCPRequest {
+interface MCPMessage {
     jsonrpc: "2.0";
-    method: string;
-    params: any;
     id: string;
 }
 
-interface MCPResponse {
-    jsonrpc: "2.0";
+interface MCPRequest extends MCPMessage {
+    method: string;
+    params: any;
+}
+
+interface MCPResponse extends MCPMessage {
     result?: any;
     error?: MCPError;
-    id: string;
 }
 
 interface MCPError {
@@ -124,40 +89,79 @@ interface MCPError {
     message: string;
     data?: any;
 }
+
+interface MCPNotification {
+    jsonrpc: "2.0";
+    method: string;
+    params: any;
+}
 ```
 
-### 2. Initialization Phase
+### 2. Connection Lifecycle
 
+#### Initialization
 ```typescript
 interface InitializeRequest {
-    protocolVersion: string;  // e.g. "2024-11-05"
+    protocolVersion: string;
     capabilities: {
         roots?: { listChanged?: boolean };
-        sampling?: {};
+        sampling?: {
+            maxTokens?: number;
+            temperature?: number;
+        };
         experimental?: Record<string, any>;
     };
     clientInfo: {
         name: string;
         version: string;
+        environment?: Record<string, string>;
+    };
+    security?: {
+        authentication?: string;
+        encryption?: string[];
     };
 }
 
 interface InitializeResponse {
     protocolVersion: string;
     capabilities: {
-        logging?: {};
-        prompts?: { listChanged?: boolean };
+        logging?: {
+            levels: string[];
+            structured?: boolean;
+        };
+        prompts?: {
+            listChanged?: boolean;
+            maxLength?: number;
+        };
         resources?: {
             subscribe?: boolean;
             listChanged?: boolean;
+            maxSize?: number;
         };
-        tools?: { listChanged?: boolean };
+        tools?: {
+            listChanged?: boolean;
+            concurrent?: boolean;
+        };
         experimental?: Record<string, any>;
     };
     serverInfo: {
         name: string;
         version: string;
+        capabilities: string[];
     };
+}
+```
+
+#### Shutdown
+```typescript
+interface ShutdownRequest {
+    reason?: string;
+    force?: boolean;
+}
+
+interface ShutdownResponse {
+    success: boolean;
+    message?: string;
 }
 ```
 
@@ -169,25 +173,40 @@ interface Resource {
     name: string;
     mimeType?: string;
     description?: string;
+    metadata?: Record<string, any>;
+    security?: {
+        permissions: string[];
+        owner?: string;
+    };
 }
 
 interface ResourceTemplate {
-    uriTemplate: string;  // RFC 6570 URI Template
+    uriTemplate: string;
     name: string;
     mimeType?: string;
     description?: string;
+    parameters: {
+        [key: string]: {
+            type: string;
+            description?: string;
+            required?: boolean;
+            default?: any;
+        };
+    };
 }
 
 interface ResourceContent {
     uri: string;
     mimeType: string;
     text: string;
+    metadata?: Record<string, any>;
+    etag?: string;
 }
 
-interface ResourceProvider {
-    getResource(uri: string): Promise<ResourceContent>;
-    listResources(): Promise<Resource[]>;
-    listTemplates(): Promise<ResourceTemplate[]>;
+interface ResourceSubscription {
+    uri: string;
+    events: string[];
+    filter?: string;
 }
 ```
 
@@ -197,10 +216,28 @@ interface ResourceProvider {
 interface ToolDefinition {
     name: string;
     description: string;
+    version: string;
+    category: string;
     inputSchema: {
         type: "object";
         properties: Record<string, any>;
         required: string[];
+    };
+    outputSchema?: {
+        type: "object";
+        properties: Record<string, any>;
+    };
+    examples?: Array<{
+        input: Record<string, any>;
+        output: any;
+        description?: string;
+    }>;
+    security?: {
+        permissions: string[];
+        rateLimit?: {
+            requests: number;
+            window: number;
+        };
     };
 }
 
@@ -208,51 +245,95 @@ interface ToolResult {
     content: Array<{
         type: string;
         text: string;
+        metadata?: Record<string, any>;
     }>;
     isError?: boolean;
-}
-
-interface ToolExecutor {
-    execute(params: any): Promise<ToolResult>;
-    validate(params: any): boolean;
-    handleError(error: Error): ToolResult;
+    diagnostics?: Array<{
+        severity: "error" | "warning" | "info";
+        message: string;
+        code?: string;
+        source?: string;
+    }>;
 }
 ```
 
-## Protocol Lifecycle
+## Security Implementation
 
-### 1. Initialization
-- Client sends initialize request with capabilities
-- Server responds with supported capabilities
-- Version negotiation occurs
-- Connection established on success
+### 1. Authentication
 
-### 2. Operation
-- Normal protocol communication
-- Tool and resource requests
-- Notifications and updates
-- Error handling
+```typescript
+interface AuthenticationRequest {
+    type: string;
+    credentials: Record<string, string>;
+}
 
-### 3. Shutdown
-- Graceful termination
-- Resource cleanup
-- Connection closure
+interface AuthenticationResponse {
+    token: string;
+    expires?: number;
+    permissions: string[];
+}
+```
+
+### 2. Access Control
+
+```typescript
+interface AccessControl {
+    checkAccess(resource: string, operation: string): boolean;
+    grantAccess(resource: string, operation: string): void;
+    revokeAccess(resource: string, operation: string): void;
+}
+
+interface AccessPolicy {
+    resources: Array<{
+        pattern: string;
+        permissions: string[];
+        conditions?: Record<string, any>;
+    }>;
+    roles: Record<string, string[]>;
+}
+```
+
+### 3. Rate Limiting
+
+```typescript
+interface RateLimiter {
+    checkLimit(key: string, limit: number, window: number): boolean;
+    resetLimit(key: string): void;
+    getLimitStatus(key: string): {
+        remaining: number;
+        reset: number;
+    };
+}
+
+interface RateLimit {
+    requests: number;
+    window: number;
+    scope?: string;
+}
+```
 
 ## Error Handling
 
 ### Error Codes
 ```typescript
 enum ErrorCode {
+    // Standard JSON-RPC errors
     ParseError = -32700,
     InvalidRequest = -32600,
     MethodNotFound = -32601,
     InvalidParams = -32602,
     InternalError = -32603,
+
+    // MCP-specific errors
     ResourceNotFound = -32001,
     ResourceAccessDenied = -32002,
     ToolExecutionError = -32003,
     RateLimitExceeded = -32004,
-    ExternalServiceError = -32005
+    ExternalServiceError = -32005,
+    ValidationError = -32006,
+    AuthenticationError = -32007,
+    SubscriptionError = -32008,
+    ConcurrencyError = -32009
 }
 ```
 
@@ -263,90 +344,91 @@ interface ErrorResponse {
     error: {
         code: ErrorCode;
         message: string;
-        data?: any;
+        data?: {
+            details?: string;
+            stack?: string;
+            context?: Record<string, any>;
+        };
     };
     id: string | null;
 }
 ```
 
-## Security Considerations
+## Best Practices
 
-### 1. Access Control
-```typescript
-interface AccessControl {
-    checkAccess(resource: string, operation: string): boolean;
-    grantAccess(resource: string, operation: string): void;
-    revokeAccess(resource: string, operation: string): void;
-}
-```
+### 1. Implementation Guidelines
+- Follow protocol specification exactly
+- Implement proper error handling
+- Validate all inputs thoroughly
+- Use TypeScript/Python for type safety
+- Implement proper logging
+- Handle resource cleanup
 
-### 2. Rate Limiting
-```typescript
-interface RateLimiter {
-    checkLimit(key: string, limit: number, window: number): boolean;
-    resetLimit(key: string): void;
-    getLimitStatus(key: string): {
-        remaining: number;
-        reset: number;
-    };
-}
-```
-
-### 3. Security Guidelines
-- Implement proper authentication if needed
+### 2. Security Guidelines
+- Implement proper authentication
 - Validate all inputs
 - Control resource access
 - Handle sensitive data appropriately
 - Implement rate limiting
 - Monitor for abuse
+- Regular security audits
 
-## Best Practices
-
-### 1. Implementation
-- Follow protocol specification exactly
-- Implement proper error handling
-- Validate all inputs
-- Handle resource cleanup
-- Use TypeScript/Python for type safety
-
-### 2. Performance
+### 3. Performance Guidelines
 - Optimize transport layer
 - Handle concurrent requests
 - Implement proper timeouts
 - Monitor resource usage
 - Cache when appropriate
+- Profile critical paths
 
-### 3. Maintenance
-- Log operations
-- Monitor errors
-- Track performance
-- Update dependencies
+### 4. Maintenance Guidelines
+- Log operations comprehensively
+- Monitor errors systematically
+- Track performance metrics
+- Update dependencies regularly
 - Follow security advisories
+- Document changes properly
 
 ## Future Considerations
 
 ### 1. Protocol Evolution
-- Version management
-- Backward compatibility
-- Feature extensions
-- Performance improvements
+- Version management strategy
+- Backward compatibility support
+- Feature extension mechanism
+- Performance optimization paths
+- Security enhancement roadmap
 
 ### 2. Security Enhancements
-- Standardized authentication
+- Advanced authentication methods
 - Fine-grained access control
-- Audit logging
-- Threat protection
+- Enhanced audit logging
+- Threat protection mechanisms
+- Zero-trust architecture
 
 ### 3. Feature Extensions
 - Binary data support
-- Streaming capabilities
+- Enhanced streaming capabilities
 - Real-time updates
-- Enhanced monitoring
+- Advanced monitoring
+- Plugin architecture
 
 ## Reference Implementation
 
-The reference implementation of this specification can be found in the DeepSeek Engineer codebase. For practical examples and usage patterns, refer to the [MCP Implementation Guide](mcp-implementation.md) and [MCP Best Practices](mcp-best-practices.md).
+The reference implementation can be found in the DeepSeek Engineer codebase. For practical examples and usage patterns, refer to:
+- [MCP Implementation Guide](mcp-implementation.md)
+- [MCP Best Practices](mcp-best-practices.md)
+- Individual server implementations in the `mcp-servers/` directory
 
-## Schema
+## Schema Validation
 
 The full specification is defined in TypeScript, serving as the source of truth for all protocol messages and structures. Implementations should refer to this schema for type definitions and validation.
+
+## Compatibility
+
+The MCP specification is designed to be:
+- Language-agnostic
+- Transport-independent
+- Extensible
+- Backward-compatible
+- Security-focused
+- Performance-oriented
