@@ -1,67 +1,66 @@
 # DeepSeek Engineer
 
-An advanced software development assistant powered by DeepSeek's language models. This tool provides intelligent code analysis, generation, and modification capabilities with robust security, monitoring, and conversation management.
+A sophisticated software development assistant powered by DeepSeek's language models and an extensible plugin system. This tool provides intelligent code analysis, generation, and modification capabilities with enterprise-grade security, monitoring, and extensibility.
 
-## Features
+## Core Features
 
-- 🧠 Intelligent code understanding and generation
-- 🔒 Built-in security and access control
-- 📊 Comprehensive monitoring and telemetry
-- 💬 Persistent conversation management
-- 🔄 Smart file operations with diff support
-- 📝 Structured output handling
-- 🚀 MCP (Model Context Protocol) integration
+### 🧠 Intelligent Code Understanding
+- Advanced code analysis and generation
+- Context-aware modifications
+- Smart refactoring suggestions
+- Pattern recognition and best practices
+
+### 🔌 Plugin System (MCP)
+- Extensible Model Context Protocol
+- Dynamic plugin loading
+- Resource and tool providers
+- Sandboxed execution
+- State management
+
+### 🔒 Enterprise Security
+- Path validation and sandboxing
+- Content validation
+- Rate limiting
+- Authentication tokens
+- Input sanitization
+- Secure file operations
+
+### 📊 Advanced Monitoring
+- System metrics
+- Performance tracking
+- Error monitoring
+- Usage analytics
+- Resource tracking
+
+### 💾 Smart File Operations
+- Enhanced file management
+- Diff-based editing
+- Atomic operations
+- Transaction support
+
+### 💬 Context Management
+- Persistent conversations
+- Token optimization
+- Context windowing
+- Memory management
 
 ## Installation
 
 ### From PyPI
-
 ```bash
 pip install deepseek-engineer
 ```
 
 ### From Source
-
 ```bash
 git clone https://github.com/deepseek/deepseek-engineer.git
 cd deepseek-engineer
 pip install -e ".[dev,test]"
 ```
 
-## Configuration
+## Quick Start
 
-DeepSeek Engineer can be configured through environment variables or command-line arguments:
-
-```bash
-# Required
-export DEEPSEEK_API_KEY="your-api-key"
-
-# Optional
-export DEEPSEEK_CONVERSATION_PATH="~/.deepseek/conversation.json"
-export DEEPSEEK_SECURITY_CONFIG="~/.deepseek/security.json"
-export DEEPSEEK_LOG_PATH="~/.deepseek/deepseek.log"
-```
-
-## Usage
-
-### Command Line Interface
-
-```bash
-# Basic usage
-deepseek
-
-# With custom configuration
-deepseek --base-path /path/to/project \
-         --max-tokens 4000 \
-         --conversation-path ./conversation.json
-
-# Export metrics/events
-deepseek --export-metrics metrics.json
-deepseek --export-events events.json
-```
-
-### Python API
-
+### Basic Usage
 ```python
 from deepseek_engineer import DeepSeekEngineer, AppConfig
 
@@ -74,34 +73,120 @@ config = AppConfig(
 app = DeepSeekEngineer(config)
 
 # Process a request
-result = app.process_request(
+result = await app.process_request(
     message="Create a Python function that sorts a list of dictionaries by a key",
     context={"language": "python", "style": "functional"}
 )
 
-# Access response and file changes
+# Access response
 print(result["response"])
+
+# Check file changes
 for change in result["file_changes"]:
     print(f"Modified {change['path']}: {change['operation']}")
-
-# Get system status
-status = app.get_status()
-print(f"System CPU: {status['system_status']['system_metrics']['cpu_percent']}%")
 ```
 
-## Security
+### Plugin Development
+```python
+from deepseek_engineer.mcp import ToolProvider, create_plugin_metadata
 
-DeepSeek Engineer includes comprehensive security features:
+class MyPlugin(ToolProvider):
+    def __init__(self, metadata):
+        super().__init__(metadata)
+        
+    async def initialize(self):
+        # Setup resources
+        pass
+        
+    async def execute_tool(self, name: str, args: dict):
+        # Implement tool logic
+        return {"result": "success"}
+        
+    def list_tools(self):
+        return [
+            {
+                "name": "my_tool",
+                "description": "Does something awesome"
+            }
+        ]
+```
 
-- Path validation and sandboxing
-- Content validation
-- Rate limiting
-- Authentication tokens
-- Input sanitization
-- Secure file operations
+## Architecture
 
-Configure security settings in `security.json`:
+### Core Components
+```
+DeepSeekEngineer
+├── Core
+│   ├── FileManager
+│   ├── SecurityManager
+│   ├── ConversationManager
+│   ├── MonitoringSystem
+│   └── ApiClient
+└── MCP
+    ├── PluginManager
+    ├── Registry
+    ├── Loader
+    └── Config
+```
 
+### Plugin System (MCP)
+```
+Model Context Protocol
+├── Base
+│   ├── MCPPlugin
+│   ├── ResourceProvider
+│   └── ToolProvider
+├── Infrastructure
+│   ├── PluginLoader
+│   └── Registry
+└── Management
+    ├── ConfigManager
+    └── StateManager
+```
+
+## Advanced Usage
+
+### Custom Tool Development
+```python
+@dataclass
+class ToolSchema:
+    name: str
+    description: str
+    parameters: Dict[str, Any]
+    returns: Dict[str, Any]
+
+class CustomTool(ToolProvider):
+    def get_tool_schema(self, name: str) -> ToolSchema:
+        return ToolSchema(
+            name="custom_tool",
+            description="Does something specific",
+            parameters={
+                "input": {"type": "string"}
+            },
+            returns={
+                "result": {"type": "string"}
+            }
+        )
+```
+
+### Resource Provider
+```python
+class DataProvider(ResourceProvider):
+    async def get_resource(self, uri: str) -> Any:
+        # Fetch and return resource
+        pass
+    
+    def list_resources(self) -> List[Dict[str, Any]]:
+        return [
+            {
+                "name": "data",
+                "type": "json",
+                "uri": "data://my/resource"
+            }
+        ]
+```
+
+### Security Configuration
 ```json
 {
     "allowed_paths": ["/path/to/project"],
@@ -116,33 +201,9 @@ Configure security settings in `security.json`:
 }
 ```
 
-## Monitoring
-
-The system includes built-in monitoring capabilities:
-
-- System metrics (CPU, memory, disk usage)
-- Request/response metrics
-- Error tracking
-- Performance monitoring
-- Event logging
-
-Access monitoring data through the API or export it:
-
-```python
-# Export metrics
-app.export_metrics("metrics.json")
-
-# Export events
-app.export_events("events.json")
-
-# Get current status
-status = app.get_status()
-```
-
 ## Development
 
-### Setup Development Environment
-
+### Setup Environment
 ```bash
 # Install development dependencies
 pip install -e ".[dev,test]"
@@ -152,7 +213,6 @@ pre-commit install
 ```
 
 ### Running Tests
-
 ```bash
 # Run all tests
 pytest
@@ -165,13 +225,6 @@ pytest tests/test_app.py
 ```
 
 ### Code Style
-
-The project uses:
-- Black for code formatting
-- isort for import sorting
-- mypy for type checking
-- ruff for linting
-
 ```bash
 # Format code
 black src tests
@@ -187,34 +240,49 @@ ruff src tests
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+2. Create a feature branch
 3. Make your changes
-4. Run tests (`pytest`)
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
+4. Run tests
+5. Submit a pull request
+
+## Secret Insights
+
+### Performance Optimizations
+1. The FileManager uses a smart caching system that invalidates based on file modification times
+2. The ConversationManager implements token windowing to prevent context overflow
+3. The MCP registry uses a double-buffered state system for atomic updates
+4. The monitoring system uses ring buffers to prevent memory bloat
+
+### Critical Paths
+1. Plugin initialization is serialized to prevent resource contention
+2. File operations are batched when possible
+3. Security checks are layered for graceful degradation
+4. API requests are rate-limited per token bucket algorithm
+
+### Future Enhancements
+1. Plugin marketplace with versioning
+2. Hot reloading support
+3. Distributed execution
+4. Enhanced caching strategies
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- DeepSeek for their powerful language models
-- The open source community for various tools and libraries used in this project
+MIT License - see LICENSE file for details.
 
 ## Support
 
-For support, please:
-1. Check the [documentation](https://docs.deepseek.ai/engineer)
-2. Search [existing issues](https://github.com/deepseek/deepseek-engineer/issues)
-3. Create a new issue if needed
+1. Check documentation
+2. Search issues
+3. Create new issue
+4. Join Discord community
+
+## Acknowledgments
+
+Special thanks to:
+- DeepSeek team for the powerful language models
+- Open source community for various tools and libraries
+- Contributors and early adopters
 
 ## Roadmap
 
-- [ ] Enhanced code generation capabilities
-- [ ] Improved context management
-- [ ] Additional language support
-- [ ] IDE integrations
-- [ ] Collaborative features
-- [ ] Performance optimizations
+See concrete-implementation-plan.md for detailed roadmap and implementation strategy.
