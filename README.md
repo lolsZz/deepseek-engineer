@@ -1,167 +1,220 @@
-# DeepSeek Engineer 🐋
+# DeepSeek Engineer
 
-## Overview
+An advanced software development assistant powered by DeepSeek's language models. This tool provides intelligent code analysis, generation, and modification capabilities with robust security, monitoring, and conversation management.
 
-This repository contains a powerful coding assistant application that integrates with multiple LLM providers through LiteLLM, with DeepSeek as the primary implementation. Through an intuitive command-line interface, it can read local file contents, create new files, and apply diff edits to existing files in real time. The system is extended through the Model Context Protocol (MCP), providing access to a wide range of tools and services.
+## Features
 
-## Key Features
+- 🧠 Intelligent code understanding and generation
+- 🔒 Built-in security and access control
+- 📊 Comprehensive monitoring and telemetry
+- 💬 Persistent conversation management
+- 🔄 Smart file operations with diff support
+- 📝 Structured output handling
+- 🚀 MCP (Model Context Protocol) integration
 
-1. Multi-Provider LLM Support
-   - Primary integration with DeepSeek API
-   - Support for Cerebras models
-   - AWS Bedrock integration
-   - Unified interface through LiteLLM
-   - Configurable fallback strategies
+## Installation
 
-2. Data Models
-   - Leverages Pydantic for type-safe handling of file operations:
-     • FileToCreate – describes files to be created or updated
-     • FileToEdit – describes specific snippet replacements in an existing file
-     • AssistantResponse – structures chat responses and potential file operations
+### From PyPI
 
-3. System Prompt
-   - A comprehensive system prompt guides conversation
-   - Ensures structured JSON output
-   - Supports file operations and tool usage
+```bash
+pip install deepseek-engineer
+```
 
-4. File Operations
-   - read_local_file: Reads target filesystem paths
-   - create_file: Creates or overwrites files
-   - show_diff_table: Visual diff previews
-   - apply_diff_edit: Precise code modifications
+### From Source
 
-5. "/add" Command
-   - Quick file content insertion with "/add path/to/file"
-   - Adds context for code generation and modifications
-   - Supports conversation history management
+```bash
+git clone https://github.com/deepseek/deepseek-engineer.git
+cd deepseek-engineer
+pip install -e ".[dev,test]"
+```
 
-6. Conversation Flow
-   - Maintains conversation history
-   - Streams responses from LLM providers
-   - Parses structured JSON outputs
-   - Handles file modifications
+## Configuration
 
-7. Interactive Session
-   - Terminal-based interface
-   - File content integration
-   - Change confirmation system
-   - Streaming responses
+DeepSeek Engineer can be configured through environment variables or command-line arguments:
 
-8. MCP Server Integration
-   - Model Context Protocol support
-   - Various server types:
-     • System Integration (Filesystem, Git, Time)
-     • Database (SQLite, PostgreSQL)
-     • Search & Knowledge (Brave Search, AWS KB Retrieval)
-     • AI/ML Integration (Sequential Thinking, EverArt)
-     • External API Integration (Google Maps, Slack, GitHub/GitLab)
-     • Monitoring (Sentry)
-   - TypeScript and Python implementations
-   - Security and rate limiting
-   - Caching and resource management
+```bash
+# Required
+export DEEPSEEK_API_KEY="your-api-key"
 
-9. Logging and Monitoring
-   - Comprehensive logging system
-   - Performance monitoring
-   - Error tracking
-   - Usage analytics
+# Optional
+export DEEPSEEK_CONVERSATION_PATH="~/.deepseek/conversation.json"
+export DEEPSEEK_SECURITY_CONFIG="~/.deepseek/security.json"
+export DEEPSEEK_LOG_PATH="~/.deepseek/deepseek.log"
+```
 
-## Getting Started
+## Usage
 
-1. Prepare environment variables:
-   ```bash
-   # .env file
-   DEEPSEEK_API_KEY=your_deepseek_key
-   CEREBRAS_API_KEY=your_cerebras_key  # Optional
-   AWS_ACCESS_KEY_ID=your_aws_key      # Optional
-   AWS_SECRET_ACCESS_KEY=your_aws_secret  # Optional
-   AWS_REGION_NAME=your_aws_region     # Optional
-   ```
+### Command Line Interface
 
-2. Install dependencies (choose one method):
+```bash
+# Basic usage
+deepseek
 
-   ### Using pip
-   ```bash
-   pip install -r requirements.txt
-   python3 main.py
-   ```
+# With custom configuration
+deepseek --base-path /path/to/project \
+         --max-tokens 4000 \
+         --conversation-path ./conversation.json
 
-   ### Using uv (faster alternative)
-   ```bash
-   uv venv
-   uv run main.py
-   ```
+# Export metrics/events
+deepseek --export-metrics metrics.json
+deepseek --export-events events.json
+```
 
-3. Configure MCP Servers:
-   - Set up desired MCP servers from mcp-servers directory
-   - Configure in ~/.config/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/cline_mcp_settings.json
-   - Add required API keys and credentials
+### Python API
 
-4. Start using the system:
-   - Run interactive sessions
-   - Use "/add path/to/file" for file operations
-   - Leverage MCP servers for extended functionality
+```python
+from deepseek_engineer import DeepSeekEngineer, AppConfig
 
-## Documentation
+# Initialize with configuration
+config = AppConfig(
+    api_key="your-api-key",
+    base_path=Path("./project"),
+    max_tokens=8000
+)
+app = DeepSeekEngineer(config)
 
-### Core Documentation
-- [Architecture](dev/docs/architecture.md) - System design and components
-- [API Integration](dev/docs/api-integration.md) - API interaction details
-- [File Operations](dev/docs/file-operations.md) - File handling guide
-- [Components](dev/docs/components.md) - Component breakdown
+# Process a request
+result = app.process_request(
+    message="Create a Python function that sorts a list of dictionaries by a key",
+    context={"language": "python", "style": "functional"}
+)
 
-### LLM Integration
-- [DeepSeek Integration](dev/docs/deepseek-integration.md) - Primary LLM implementation
-- [LiteLLM Integration](dev/docs/litellm-integration.md) - Multi-provider support
-- [LLM Configuration](dev/docs/llm-configuration.md) - LLM setup guide
-- [Advanced LLM Features](dev/docs/advanced-llm-features.md) - Advanced capabilities
+# Access response and file changes
+print(result["response"])
+for change in result["file_changes"]:
+    print(f"Modified {change['path']}: {change['operation']}")
 
-### MCP Documentation
-- [MCP Specification](dev/docs/mcp-specification.md) - Protocol details
-- [MCP Implementation](dev/docs/mcp-implementation.md) - Implementation guide
-- [MCP Best Practices](dev/docs/mcp-best-practices.md) - Guidelines and patterns
+# Get system status
+status = app.get_status()
+print(f"System CPU: {status['system_status']['system_metrics']['cpu_percent']}%")
+```
 
-### System Documentation
-- [Development Guide](dev/docs/development-guide.md) - Development workflow
-- [Logging and Monitoring](dev/docs/logging-and-monitoring.md) - Observability guide
+## Security
 
-## Available MCP Servers
+DeepSeek Engineer includes comprehensive security features:
 
-1. System Integration
-   - filesystem: File system operations
-   - git: Version control operations
-   - time: Time management and scheduling
+- Path validation and sandboxing
+- Content validation
+- Rate limiting
+- Authentication tokens
+- Input sanitization
+- Secure file operations
 
-2. Database
-   - sqlite: SQLite database operations
-   - postgres: PostgreSQL database operations
-   - memory: In-memory storage
+Configure security settings in `security.json`:
 
-3. Search & Knowledge
-   - brave-search: Web search capabilities
-   - aws-kb-retrieval: AWS knowledge base integration
-   - everything: Local file search
+```json
+{
+    "allowed_paths": ["/path/to/project"],
+    "blocked_paths": ["/etc", "/sys"],
+    "allowed_extensions": [".py", ".js", ".html", ".css", ".json"],
+    "blocked_extensions": [".exe", ".sh"],
+    "max_file_size": 10485760,
+    "rate_limit_window": 60,
+    "rate_limit_max_requests": 100,
+    "require_auth": true,
+    "auth_token_expiry": 3600
+}
+```
 
-4. AI/ML Integration
-   - sequentialthinking: Advanced reasoning capabilities
-   - everart: Art generation
+## Monitoring
 
-5. External APIs
-   - google-maps: Location and mapping services
-   - slack: Slack messaging integration
-   - github/gitlab: Repository management
+The system includes built-in monitoring capabilities:
 
-6. Monitoring
-   - sentry: Error tracking and monitoring
+- System metrics (CPU, memory, disk usage)
+- Request/response metrics
+- Error tracking
+- Performance monitoring
+- Event logging
+
+Access monitoring data through the API or export it:
+
+```python
+# Export metrics
+app.export_metrics("metrics.json")
+
+# Export events
+app.export_events("events.json")
+
+# Get current status
+status = app.get_status()
+```
+
+## Development
+
+### Setup Development Environment
+
+```bash
+# Install development dependencies
+pip install -e ".[dev,test]"
+
+# Install pre-commit hooks
+pre-commit install
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=deepseek_engineer
+
+# Run specific test file
+pytest tests/test_app.py
+```
+
+### Code Style
+
+The project uses:
+- Black for code formatting
+- isort for import sorting
+- mypy for type checking
+- ruff for linting
+
+```bash
+# Format code
+black src tests
+isort src tests
+
+# Type checking
+mypy src
+
+# Linting
+ruff src tests
+```
 
 ## Contributing
 
-See the [Development Guide](dev/docs/development-guide.md) for information on contributing to the project.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Run tests (`pytest`)
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
 
 ## License
 
-This project is licensed under the terms specified in the project root.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
----
+## Acknowledgments
 
-> **Note**: This is an experimental project developed to test advanced LLM capabilities through a unified interface. It was developed as a rapid prototype and should be used accordingly.
+- DeepSeek for their powerful language models
+- The open source community for various tools and libraries used in this project
+
+## Support
+
+For support, please:
+1. Check the [documentation](https://docs.deepseek.ai/engineer)
+2. Search [existing issues](https://github.com/deepseek/deepseek-engineer/issues)
+3. Create a new issue if needed
+
+## Roadmap
+
+- [ ] Enhanced code generation capabilities
+- [ ] Improved context management
+- [ ] Additional language support
+- [ ] IDE integrations
+- [ ] Collaborative features
+- [ ] Performance optimizations
