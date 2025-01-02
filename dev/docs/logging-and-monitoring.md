@@ -2,6 +2,38 @@
 
 ## Overview
 
+This guide provides comprehensive details on implementing logging, metrics collection, and monitoring for DeepSeek Engineer in production environments. It covers structured logging patterns, metrics collection strategies, and monitoring configurations that enable effective system observability.
+
+### Monitoring Architecture
+```mermaid
+graph TD
+    A[Application Logs] --> B[Logstash]
+    B --> C[Elasticsearch]
+    C --> D[Kibana Dashboard]
+    
+    E[Application Metrics] --> F[Prometheus]
+    F --> G[Grafana]
+    
+    H[Health Checks] --> I[AlertManager]
+    I --> J[PagerDuty/Slack]
+```
+
+### Key Metrics
+1. **Latency Metrics**
+   - Request processing time
+   - LLM API response time
+   - Tool execution duration
+   
+2. **Resource Metrics**
+   - Memory usage
+   - CPU utilization
+   - Network I/O
+   
+3. **Business Metrics**
+   - Request volume
+   - Error rates
+   - Cache hit rates
+
 DeepSeek Engineer implements comprehensive logging and monitoring capabilities to help teams debug, analyze, and optimize their LLM applications. This guide details the logging and monitoring systems implementation.
 
 ## Core Logging System

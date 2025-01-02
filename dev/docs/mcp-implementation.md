@@ -2,11 +2,86 @@
 
 ## Overview
 
+The Model Context Protocol (MCP) is our standardized interface for integrating various tools and services with DeepSeek Engineer. This comprehensive guide provides detailed implementation examples, best practices, and real-world deployment scenarios.
+
+### Key Features
+- **Standardized Communication**: Consistent interface for all tool integrations
+- **Type Safety**: Full TypeScript/Python type definitions for reliable development
+- **Extensible Design**: Easy-to-implement plugin architecture
+- **Production Ready**: Battle-tested in enterprise environments
+
+### Prerequisites
+- Node.js 18+ or Python 3.12+
+- TypeScript 5.0+ (for TypeScript implementations)
+- Basic understanding of async/await patterns
+- Familiarity with JSON-RPC concepts
+
 The Model Context Protocol (MCP) enables DeepSeek Engineer to communicate with locally running MCP servers that provide additional tools and resources. This guide details how to implement and integrate MCP servers with DeepSeek Engineer.
 
 ## Core Concepts
 
 ### 1. MCP Server Structure
+
+The MCP server is the foundation of tool integration. Here's a complete implementation example:
+
+#### TypeScript Implementation
+```typescript
+import { MCPServer, Tool, Resource, MCPContext } from '@deepseek/mcp-core';
+import { z } from 'zod';
+
+// Define your validation schema
+const ConfigSchema = z.object({
+  apiKey: z.string(),
+  baseUrl: z.string().url(),
+  timeout: z.number().min(1000).max(30000),
+  retryAttempts: z.number().int().min(1).max(5)
+});
+
+type Config = z.infer<typeof ConfigSchema>;
+
+class MyMCPServer extends MCPServer {
+  private config: Config;
+  private apiClient: APIClient;
+
+  constructor(config: Config) {
+    super();
+    this.config = ConfigSchema.parse(config);
+    this.apiClient = new APIClient(config);
+    
+    // Register startup and shutdown hooks
+    this.onStartup(async () => {
+      await this.apiClient.initialize();
+      console.log('Server started successfully');
+    });
+
+    this.onShutdown(async () => {
+      await this.apiClient.cleanup();
+      console.log('Server shutdown complete');
+    });
+  }
+
+  // Register tools and resources
+  protected async initialize(): Promise<void> {
+    // Register tools
+    this.registerTool(new SearchTool(this.apiClient));
+    this.registerTool(new AnalyzeTool(this.apiClient));
+    
+    // Register resources
+    this.registerResource(new DataResource(this.apiClient));
+    this.registerResource(new ConfigResource(this.config));
+  }
+
+  // Implement custom error handling
+  protected handleError(error: Error, context: MCPContext): void {
+    console.error(`Error in ${context.toolId}:`, error);
+    // Forward to error monitoring service
+    this.errorMonitor.captureException(error, {
+      toolId: context.toolId,
+      requestId: context.requestId
+    });
+  }
+}
+```
 
 MCP servers can be implemented in both TypeScript/JavaScript and Python, offering flexibility in language choice based on the use case.
 
@@ -40,6 +115,76 @@ class CustomMcpServer {
 ```
 
 #### Python Implementation
+```python
+from typing import Dict, Any, Optional
+from pydantic import BaseModel, HttpUrl
+from mcp_core import MCPServer, Tool, Resource, MCPContext
+import asyncio
+import structlog
+
+logger = structlog.get_logger()
+
+class ServerConfig(BaseModel):
+    api_key: str
+    base_url: HttpUrl
+    timeout: int = 5000
+    retry_attempts: int = 3
+    
+    class Config:
+        extra = "forbid"
+
+class CustomMCPServer(MCPServer):
+    def __init__(self, config: Dict[str, Any]):
+        super().__init__()
+        self.config = ServerConfig(**config)
+        self.api_client = APIClient(self.config)
+        self._setup_logging()
+    
+    def _setup_logging(self):
+        self.logger = logger.bind(
+            server_id=self.server_id,
+            base_url=str(self.config.base_url)
+        )
+    
+    async def initialize(self):
+        """Initialize server resources and tools."""
+        try:
+            # Initialize API client
+            await self.api_client.connect()
+            
+            # Register tools
+            self.register_tool(SearchTool(self.api_client))
+            self.register_tool(AnalyzeTool(self.api_client))
+            
+            # Register resources
+            self.register_resource(DataResource(self.api_client))
+            self.register_resource(ConfigResource(self.config))
+            
+            self.logger.info("server_initialized", 
+                           tool_count=len(self.tools),
+                           resource_count=len(self.resources))
+                           
+        except Exception as e:
+            self.logger.error("initialization_failed", error=str(e))
+            raise
+    
+    async def shutdown(self):
+        """Clean shutdown of server resources."""
+        try:
+            await self.api_client.disconnect()
+            self.logger.info("server_shutdown_complete")
+        except Exception as e:
+            self.logger.error("shutdown_error", error=str(e))
+            raise
+
+    def handle_error(self, error: Exception, context: MCPContext):
+        """Custom error handling with structured logging."""
+        self.logger.error("tool_execution_error",
+                         tool_id=context.tool_id,
+                         request_id=context.request_id,
+                         error=str(error),
+                         error_type=type(error).__name__)
+```
 ```python
 from mcp_server_base import Server, StdioServerTransport
 from typing import Dict, Any

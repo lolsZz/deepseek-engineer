@@ -2,7 +2,25 @@
 
 ## Getting Started
 
+This comprehensive guide will help you set up your development environment and understand our development workflow, best practices, and deployment procedures.
+
 ### Prerequisites
+
+#### Required Software
+- Python 3.12 or higher (for enhanced typing support)
+- Node.js 18+ (for TypeScript/JavaScript development)
+- Docker 24.0+ (for containerized development)
+- Git 2.40+ (for version control)
+
+#### Development Tools
+- VSCode or PyCharm (recommended IDEs)
+- Docker Desktop
+- Postman (for API testing)
+
+#### Access Requirements
+- GitHub account with repository access
+- AWS IAM credentials (for cloud deployments)
+- Development environment API keys
 - Python 3.12 or higher (for enhanced typing support)
 - DeepSeek API key
 - pip or uv package manager
@@ -11,6 +29,40 @@
 ### Initial Setup
 
 1. **Clone the Repository**
+```bash
+git clone git@github.com:deepseek/engineer.git
+cd engineer
+```
+
+2. **Create Virtual Environment**
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Linux/MacOS
+.venv\Scripts\activate     # Windows
+```
+
+3. **Install Dependencies**
+```bash
+pip install -r requirements.txt
+pip install -r requirements-dev.txt  # Development dependencies
+```
+
+4. **Configure Environment**
+```bash
+cp .env.example .env
+# Edit .env with your API keys and configuration
+```
+
+5. **Initialize Development Database**
+```bash
+python scripts/init_db.py
+```
+
+6. **Run Pre-commit Hooks**
+```bash
+pre-commit install
+pre-commit run --all-files
+```
    ```bash
    git clone <repository-url>
    cd deepseek-engineer
@@ -37,6 +89,39 @@
    ```
 
 ### Project Structure
+
+Our project follows a modular architecture with clear separation of concerns:
+
+```
+deepseek-engineer/
+├── src/                    # Source code
+│   ├── core/              # Core functionality
+│   │   ├── config.py      # Configuration management
+│   │   ├── models.py      # Data models
+│   │   └── utils.py       # Utility functions
+│   ├── api/               # API endpoints
+│   │   ├── routes/        # Route definitions
+│   │   └── middleware/    # API middleware
+│   ├── services/          # Business logic
+│   │   ├── llm/          # LLM integration
+│   │   └── mcp/          # MCP implementation
+│   └── plugins/           # Plugin system
+├── tests/                 # Test suite
+│   ├── unit/             # Unit tests
+│   ├── integration/      # Integration tests
+│   └── e2e/              # End-to-end tests
+├── scripts/              # Development scripts
+├── docs/                 # Documentation
+└── deployment/           # Deployment configurations
+    ├── docker/          # Docker configurations
+    └── k8s/             # Kubernetes manifests
+```
+
+#### Key Components
+- **core/**: Contains essential functionality used across the application
+- **api/**: Handles HTTP endpoints and request processing
+- **services/**: Implements core business logic and integrations
+- **plugins/**: Extensible plugin system for custom functionality
 ```
 deepseek-engineer/
 ├── main.py              # Main application entry point
@@ -53,7 +138,96 @@ deepseek-engineer/
 
 ## Development Workflow
 
+### Overview
+Our development workflow is designed to ensure code quality, maintainability, and efficient collaboration:
+
+1. **Feature Planning** → 2. **Development** → 3. **Testing** → 4. **Code Review** → 5. **Integration** → 6. **Deployment**
+
+### Environment Setup
+
+#### Local Development
+```bash
+# Start development server
+python -m uvicorn src.main:app --reload --port 8000
+
+# Run background workers
+celery -A src.worker worker --loglevel=info
+
+# Start development database
+docker-compose up -d postgres redis
+```
+
+#### Docker Development
+```bash
+# Build development image
+docker build -t deepseek-engineer:dev -f deployment/docker/Dockerfile.dev .
+
+# Run development container
+docker run -it --rm \
+  -v $(pwd):/app \
+  -p 8000:8000 \
+  -e PYTHON_ENV=development \
+  deepseek-engineer:dev
+```
+
 ### 1. Code Organization
+
+#### Module Structure
+```python
+# src/service/llm_service.py
+from typing import Optional, Dict, Any
+from pydantic import BaseModel
+
+class LLMRequest(BaseModel):
+    prompt: str
+    params: Optional[Dict[str, Any]] = None
+    
+class LLMService:
+    def __init__(self, config: Dict[str, Any]):
+        self.config = config
+        self._initialize_clients()
+    
+    async def generate(self, request: LLMRequest) -> str:
+        """Generate LLM response with automatic retries and fallback."""
+        try:
+            return await self._primary_generate(request)
+        except Exception as e:
+            logger.error(f"Primary LLM failed: {e}")
+            return await self._fallback_generate(request)
+```
+
+#### Configuration Management
+```python
+# src/core/config.py
+from pydantic import BaseSettings, SecretStr
+
+class AppConfig(BaseSettings):
+    """Application configuration with environment variable support."""
+    debug: bool = False
+    api_key: SecretStr
+    database_url: str
+    redis_url: str
+    
+    class Config:
+        env_file = ".env"
+        case_sensitive = False
+```
+
+#### Type Definitions
+```python
+# src/core/types.py
+from typing import TypedDict, List, Optional
+
+class ToolResult(TypedDict):
+    success: bool
+    data: Optional[dict]
+    error: Optional[str]
+
+class MCPResponse(TypedDict):
+    tool_id: str
+    results: List[ToolResult]
+    metadata: dict
+```
 
 The main application logic is organized into several key sections:
 
