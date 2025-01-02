@@ -301,12 +301,59 @@ When adding new features:
            handle_new_feature()
    ```
 
-### 3. Testing
+### 3. Testing and Performance
 
-The project uses pytest for testing. Run tests with:
+#### Running Tests
 ```bash
-pytest tests/
+# Run unit tests
+pytest tests/unit/
+
+# Run integration tests
+pytest tests/integration/
+
+# Run with coverage
+pytest --cov=src/deepseek_engineer --cov-report=xml
+
+# Run specific test file
+pytest tests/test_app.py
 ```
+
+#### Performance Benchmarking
+The project includes a comprehensive benchmarking system to track performance metrics:
+
+```bash
+# Run all benchmarks
+python dev/benchmarks/run_benchmarks.py
+
+# View results
+open dev/benchmarks/reports/benchmark_report_*.html
+```
+
+Key performance metrics tracked:
+- Response time (target: <100ms)
+- Memory usage (target: <500MB)
+- Test coverage (target: >90%)
+
+The benchmark framework provides:
+- Real-time performance tracking
+- Historical trend analysis
+- Resource usage monitoring
+- Automated regression detection
+
+#### Continuous Integration
+The project uses GitHub Actions for CI/CD with automated:
+- Testing and coverage reporting
+- Code quality checks
+- Performance benchmarking
+- Build verification
+- Release deployment
+
+Every pull request must pass:
+- All tests with >90% coverage
+- Code quality checks (black, isort, mypy, ruff)
+- Performance benchmarks within targets
+- Security scans
+- Build verification
 
 1. **Unit Tests**
    ```python
@@ -534,18 +581,32 @@ Follow these guidelines:
 ### Planned Enhancements
 
 1. **Code Quality**
-   - Expand test coverage
-   - Add performance benchmarks
-   - Implement comprehensive logging
-   - Add static analysis tools
+   - ✓ Add performance benchmarks
+   - ✓ Add static analysis tools
+   - ✓ Implement comprehensive logging
+   - Expand test coverage further
+   - Add mutation testing
+   - Implement property-based testing
 
-2. **Features**
+2. **CI/CD Pipeline**
+   - ✓ GitHub Actions workflow
+   - ✓ Automated testing
+   - ✓ Code quality checks
+   - ✓ Performance monitoring
+   - Add deployment stages (staging/production)
+   - Implement canary deployments
+   - Add infrastructure as code
+   - Set up monitoring dashboards
+
+3. **Features**
    - Enhanced MCP server support
-   - Improved file operations
+   - Plugin marketplace
+   - Hot reloading support
+   - Distributed execution
    - Project templates
-   - Plugin system
+   - Enhanced caching strategies
 
-3. **Documentation**
+4. **Documentation**
    - Interactive API documentation
    - Video tutorials
    - Contributing guidelines

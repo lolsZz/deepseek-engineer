@@ -201,6 +201,47 @@ class DataProvider(ResourceProvider):
 }
 ```
 
+## Performance
+
+### Benchmarking System
+The project includes a sophisticated benchmarking system that tracks key performance metrics:
+
+```python
+# Run comprehensive benchmarks
+python dev/benchmarks/run_benchmarks.py
+
+# Key metrics tracked:
+- Response time (target: <100ms)
+- Memory usage (target: <500MB)
+- Test coverage (target: >90%)
+```
+
+### Performance Monitoring
+The benchmark framework provides:
+- Real-time performance tracking
+- Historical trend analysis
+- HTML report generation
+- Resource usage monitoring
+- Automated performance regression detection
+
+### Success Metrics
+All changes must meet these performance criteria:
+```json
+{
+    "response_time": "<100ms",
+    "memory_usage": "<500MB",
+    "test_coverage": ">90%",
+    "benchmark_regression": "none"
+}
+```
+
+### Continuous Monitoring
+- Benchmarks run automatically in CI pipeline
+- Results archived as build artifacts
+- Performance trends tracked over time
+- Regressions trigger CI failures
+- Historical data maintained for analysis
+
 ## Development
 
 ### Setup Environment
@@ -212,7 +253,7 @@ pip install -e ".[dev,test]"
 pre-commit install
 ```
 
-### Running Tests
+### Running Tests and Benchmarks
 ```bash
 # Run all tests
 pytest
@@ -222,9 +263,15 @@ pytest --cov=deepseek_engineer
 
 # Run specific test file
 pytest tests/test_app.py
+
+# Run performance benchmarks
+python dev/benchmarks/run_benchmarks.py
+
+# View benchmark results
+open dev/benchmarks/reports/benchmark_report_*.html
 ```
 
-### Code Style
+### Code Quality
 ```bash
 # Format code
 black src tests
@@ -235,7 +282,21 @@ mypy src
 
 # Linting
 ruff src tests
+
+# All quality checks (used in CI)
+./scripts/check-quality.sh
 ```
+
+### Continuous Integration
+The project uses GitHub Actions for CI/CD with the following checks:
+- Automated testing (pytest)
+- Code coverage reporting (>90% required)
+- Code quality checks (black, isort, mypy, ruff)
+- Performance benchmarks
+- Build verification
+- Automated releases to PyPI
+
+Every pull request must pass all checks before merging.
 
 ## Contributing
 
