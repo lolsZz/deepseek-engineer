@@ -44,10 +44,28 @@ class DeepSeekEngineer:
                     persist_path=config.conversation_persist_path
                 )
                 
+                # Initialize MCP system
+                self.mcp = MCPManager(
+                    plugin_dirs=[
+                        self.base_path / "mcp-plugins",
+                        Path.home() / ".deepseek" / "plugins"
+                    ],
+                    config_dir=Path.home() / ".deepseek" / "plugin-configs"
+                )
+                
+                # Initialize MCP system
+                asyncio.run(self.mcp.initialize())
+                
+                # Add MCP state listener
+                self._setup_mcp_monitoring()
+                
                 # Record successful initialization
                 self.monitoring.record_event(
                     "app_initialized",
-                    {"base_path": str(config.base_path)}
+                    {
+                        "base_path": str(config.base_path),
+                        "active_plugins": len(self.mcp.get_active_plugins())
+                    }
                 )
                 
             except Exception as e:
@@ -205,8 +223,39 @@ class DeepSeekEngineer:
                 )
                 raise
     
+    def _setup_mcp_monitoring(self):
+        """Set up MCP state monitoring."""
+        def on_plugin_state_change(name: str, state: PluginState, error: Optional[str]):
+            """Handle plugin state changes."""
+            self.monitoring.record_event(
+                "plugin_state_change",
+                {
+                    "plugin": name,
+                    "state": state.value,
+                    "error": error
+                }
+            )
+        
+        # Add state listener for all plugins
+        for plugin in self.mcp.list_plugins():
+            self.mcp.add_plugin_state_listener(
+                plugin.name,
+                on_plugin_state_change
+            )
+    
     def get_status(self) -> Dict[str, Any]:
         """Get current system status."""
+        # Get MCP plugin status
+        plugin_status = {}
+        for plugin in self.mcp.list_plugins():
+            state = self.mcp.get_plugin_state(plugin.name)
+            info = self.mcp.get_plugin_info(plugin.name)
+            plugin_status[plugin.name] = {
+                "state": state.value if state else "unknown",
+                "version": plugin.version,
+                "error": info.error if info else None
+            }
+        
         return {
             "system_status": self.monitoring.get_system_status(),
             "conversation_summary": self.conversation.get_conversation_summary(),
@@ -216,8 +265,135 @@ class DeepSeekEngineer:
                     "window": self.security.config.rate_limit_window,
                     "max_requests": self.security.config.rate_limit_max_requests
                 }
-            }
+            },
+            "plugins": plugin_status,
+            "active_plugins": len(self.mcp.get_active_plugins())
         }
+    
+    async def execute_plugin_tool(
+        self,
+        plugin_name: str,
+        tool_name: str,
+        args: Dict[str, Any]
+    ) -> Any:
+        """
+        Execute a plugin tool.
+        
+        Args:
+            plugin_name: Name of the plugin
+            tool_name: Name of the tool to execute
+            args: Tool arguments
+            
+        Returns:
+            Tool execution result
+        """
+        with self.monitoring.measure_time(f"plugin_tool_{plugin_name}_{tool_name}"):
+            try:
+                result = await self.mcp.execute_tool(plugin_name, tool_name, args)
+                self.monitoring.record_event(
+                    "plugin_tool_executed",
+                    {
+                        "plugin": plugin_name,
+                        "tool": tool_name,
+                        "args": args
+                    }
+                )
+                return result
+            except Exception as e:
+                self.monitoring.record_error(
+                    "Plugin tool execution failed",
+                    error=e,
+                    plugin=plugin_name,
+                    tool=tool_name,
+                    args=args
+                )
+                raise
+    
+    async def get_plugin_resource(self, plugin_name: str, uri: str) -> Any:
+        """
+        Get a plugin resource.
+        
+        Args:
+            plugin_name: Name of the plugin
+            uri: Resource URI
+            
+        Returns:
+            Resource data
+        """
+        with self.monitoring.measure_time(f"plugin_resource_{plugin_name}"):
+            try:
+                result = await self.mcp.get_resource(plugin_name, uri)
+                self.monitoring.record_event(
+                    "plugin_resource_accessed",
+                    {
+                        "plugin": plugin_name,
+                        "uri": uri
+                    }
+                )
+                return result
+            except Exception as e:
+                self.monitoring.record_error(
+                    "Plugin resource access failed",
+                    error=e,
+                    plugin=plugin_name,
+                    uri=uri
+                )
+                raise
+    
+    def get_available_tools(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Get all available plugin tools."""
+        return self.mcp.get_available_tools()
+    
+    def get_available_resources(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Get all available plugin resources."""
+        return self.mcp.get_available_resources()
+    
+    def configure_plugin(self, plugin_name: str, config: Dict[str, Any]):
+        """
+        Configure a plugin.
+        
+        Args:
+            plugin_name: Name of the plugin
+            config: Plugin configuration
+        """
+        try:
+            self.mcp.configure_plugin(plugin_name, config)
+            self.monitoring.record_event(
+                "plugin_configured",
+                {
+                    "plugin": plugin_name,
+                    "config": config
+                }
+            )
+        except Exception as e:
+            self.monitoring.record_error(
+                "Plugin configuration failed",
+                error=e,
+                plugin=plugin_name,
+                config=config
+            )
+            raise
+    
+    async def reload_plugin(self, plugin_name: str):
+        """
+        Reload a plugin.
+        
+        Args:
+            plugin_name: Name of the plugin
+        """
+        try:
+            await self.mcp.reload_plugin(plugin_name)
+            self.monitoring.record_event(
+                "plugin_reloaded",
+                {"plugin": plugin_name}
+            )
+        except Exception as e:
+            self.monitoring.record_error(
+                "Plugin reload failed",
+                error=e,
+                plugin=plugin_name
+            )
+            raise
     
     def export_metrics(self, path: Path):
         """Export monitoring metrics to file."""
